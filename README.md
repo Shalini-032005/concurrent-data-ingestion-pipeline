@@ -1,23 +1,9 @@
-# Concurrent Data Ingestion Pipeline — Merged Build
+# Concurrent Data Intelligence Platform (Phase 1)
 
-A hackathon project that ingests data from multiple mock sources **concurrently**,
-validates → normalizes → deduplicates it, persists it in PostgreSQL, and exposes it
-through a REST API + WebSocket to a live React dashboard.
+An enterprise-grade, concurrent data ingestion & intelligence platform that ingests data from multiple sources **concurrently**, validates → normalizes → deduplicates it, evaluates **Data Quality**, detects **ML Anomalies**, tracks **Pipeline Health**, generates **Intelligent Alerts**, exposes **Record Data Lineage**, and provides **Run Replay** & **"What Changed?" Run Comparisons**.
 
-This is the **merged, integrated codebase** combining all four team members' work:
+Exposes rich REST APIs + WebSockets to a responsive React/Vite platform dashboard.
 
-| Member | Contribution | Status in this merge |
-|---|---|---|
-| Member 1 | FastAPI backend, async orchestrator, REST API, WebSocket | ✅ integrated |
-| Member 2 | Mock sources A/B/C, validation, normalization, deduplication | ✅ integrated |
-| Member 3 | PostgreSQL + SQLAlchemy persistence, statistics | ✅ integrated |
-| Member 4 | React + TypeScript dashboard, charts, live WebSocket UI | ✅ integrated |
-
-No manual conflict resolution was needed: each member's zip was a strict,
-additive superset of the previous one (member3's backend already contained
-member1's and member2's code, wired together), and the frontend was built
-independently against the documented API contract. See **"How the merge was
-done"** near the bottom for exactly what was checked.
 
 ```
 Mock Source A ─┐

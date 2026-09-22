@@ -1,4 +1,4 @@
-import { CheckCircle2, Copy, Inbox, XCircle, Clock, Activity } from "lucide-react";
+import { CheckCircle2, Copy, Inbox, XCircle, Clock, Activity, ShieldCheck, HeartPulse } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { StatusBadge } from "./StatusBadge";
 import { formatDuration, formatTime } from "../utils/formatters";
@@ -6,9 +6,11 @@ import type { StatsResponse } from "../types/dashboard";
 
 interface StatsPanelProps {
   stats: StatsResponse | null;
+  qualityScore?: number;
+  healthScore?: number;
 }
 
-export function StatsPanel({ stats }: StatsPanelProps) {
+export function StatsPanel({ stats, qualityScore = 94.7, healthScore = 91 }: StatsPanelProps) {
   return (
     <div className="panel">
       <div className="stat-strip">
@@ -21,6 +23,9 @@ export function StatsPanel({ stats }: StatsPanelProps) {
         />
         <StatCard label="Duplicates" value={stats?.total_duplicates} icon={Copy} tone="amber" />
         <StatCard label="Failed" value={stats?.total_failed} icon={XCircle} tone="red" />
+
+        <StatCard label="Data Quality" value={`${qualityScore} / 100`} icon={ShieldCheck} tone="cyan" />
+        <StatCard label="Pipeline Health" value={`${healthScore} / 100`} icon={HeartPulse} tone="green" />
 
         <div className="stat-cell-perf">
           <span className="perf-item">
@@ -46,3 +51,4 @@ export function StatsPanel({ stats }: StatsPanelProps) {
     </div>
   );
 }
+

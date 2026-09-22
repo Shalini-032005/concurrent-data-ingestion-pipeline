@@ -13,9 +13,20 @@ import {
   mockStats,
 } from "./mockData";
 import type {
+  AlertItem,
+  AlertsResponse,
+  AlertStatus,
+  AnomaliesResponse,
+  AnomalyRecord,
+  DataQualityResponse,
   IngestionRunSummary,
   IngestStartResponse,
   PaginatedRecords,
+  PipelineHealthResponse,
+  QualityTrendResponse,
+  RecordLineageResponse,
+  RunComparisonResponse,
+  RunReplayResponse,
   SourceStatus,
   StatsResponse,
 } from "../types/dashboard";
@@ -98,4 +109,60 @@ export const api = {
       method: "POST",
     });
   },
+
+  // Phase 1 Data Intelligence API Endpoints
+  async getQuality(): Promise<DataQualityResponse> {
+    return request<DataQualityResponse>("/api/quality");
+  },
+
+  async getQualityTrend(limit = 20): Promise<QualityTrendResponse> {
+    return request<QualityTrendResponse>(`/api/quality/trend?limit=${limit}`);
+  },
+
+  async getAnomalies(source?: string, severity?: string): Promise<AnomaliesResponse> {
+    const params = new URLSearchParams();
+    if (source) params.set("source", source);
+    if (severity) params.set("severity", severity);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return request<AnomaliesResponse>(`/api/anomalies${query}`);
+  },
+
+  async getAnomaly(anomalyId: string): Promise<AnomalyRecord> {
+    return request<AnomalyRecord>(`/api/anomalies/${anomalyId}`);
+  },
+
+  async getPipelineHealth(): Promise<PipelineHealthResponse> {
+    return request<PipelineHealthResponse>("/api/health/pipeline");
+  },
+
+  async getAlerts(status?: string): Promise<AlertsResponse> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    return request<AlertsResponse>(`/api/alerts${query}`);
+  },
+
+  async updateAlertStatus(alertId: string, status: AlertStatus): Promise<AlertItem> {
+    return request<AlertItem>(`/api/alerts/${alertId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  async getLineage(recordId: string): Promise<RecordLineageResponse> {
+    return request<RecordLineageResponse>(`/api/lineage/${encodeURIComponent(recordId)}`);
+  },
+
+  async replayRun(runId: number, sourceName?: string): Promise<RunReplayResponse> {
+    return request<RunReplayResponse>(`/api/runs/${runId}/replay`, {
+      method: "POST",
+      body: JSON.stringify({ source_name: sourceName || null }),
+    });
+  },
+
+  async getRunComparison(latestId?: number, previousId?: number): Promise<RunComparisonResponse> {
+    if (latestId && previousId) {
+      return request<RunComparisonResponse>(`/api/runs/${latestId}/compare/${previousId}`);
+    }
+    return request<RunComparisonResponse>("/api/runs/compare");
+  },
 };
+

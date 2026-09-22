@@ -102,3 +102,137 @@ export interface ActivityItem {
   message: string;
   tone: "success" | "warning" | "error" | "info";
 }
+
+// ---------------------------------------------------------------------------
+// Phase 1 Intelligence Types
+// ---------------------------------------------------------------------------
+
+export interface DataQualityResponse {
+  overall_score: number;
+  completeness: number;
+  validity: number;
+  consistency: number;
+  uniqueness: number;
+  freshness: number;
+  timestamp: string;
+  quality_by_source: Record<string, number>;
+  details: Record<string, unknown>;
+}
+
+export interface QualityTrendPoint {
+  run_id: number;
+  timestamp: string;
+  overall_score: number;
+  completeness: number;
+  validity: number;
+  consistency: number;
+  uniqueness: number;
+  freshness: number;
+}
+
+export interface QualityTrendResponse {
+  trend: QualityTrendPoint[];
+}
+
+export type AnomalySeverity = "LOW" | "MEDIUM" | "HIGH";
+export type AnomalyStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
+
+export interface AnomalyRecord {
+  id: string;
+  run_id?: number | null;
+  record_id?: string | null;
+  source: string;
+  feature_name: string;
+  current_value: number;
+  expected_range: string;
+  severity: AnomalySeverity;
+  reason: string;
+  status: AnomalyStatus;
+  timestamp: string;
+}
+
+export interface AnomaliesSummary {
+  total_anomalies: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+}
+
+export interface AnomaliesResponse {
+  anomalies: AnomalyRecord[];
+  summary: AnomaliesSummary;
+}
+
+export interface PipelineHealthResponse {
+  overall_score: number;
+  availability: number;
+  latency: number;
+  validation: number;
+  reliability: number;
+  status: "HEALTHY" | "DEGRADED" | "CRITICAL";
+  updated_at: string;
+}
+
+export type AlertSeverity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED";
+
+export interface AlertItem {
+  id: string;
+  severity: AlertSeverity;
+  title: string;
+  description: string;
+  source: string;
+  timestamp: string;
+  status: AlertStatus;
+  run_id?: number | null;
+  record_id?: string | null;
+}
+
+export interface AlertsResponse {
+  alerts: AlertItem[];
+  active_count: number;
+}
+
+export interface LineageStep {
+  stage: string;
+  status: string;
+  timestamp: string;
+  details: Record<string, unknown>;
+}
+
+export interface RecordLineageResponse {
+  record_id: string;
+  source: string;
+  run_id?: number | null;
+  received_at?: string | null;
+  final_status: string;
+  steps: LineageStep[];
+}
+
+export interface MetricChange {
+  name: string;
+  latest_value: number;
+  previous_value: number;
+  absolute_change: number;
+  percent_change: number;
+  status: "IMPROVED" | "DEGRADED" | "NEUTRAL";
+}
+
+export interface RunComparisonResponse {
+  latest_run_id: number;
+  previous_run_id: number;
+  records_change: MetricChange;
+  duplicates_change: MetricChange;
+  validation_errors_change: MetricChange;
+  latency_change: MetricChange;
+  quality_change: MetricChange;
+  anomalies_change: MetricChange;
+}
+
+export interface RunReplayResponse {
+  replay_run_id: number;
+  original_run_id: number;
+  status: string;
+  message: string;
+}
+

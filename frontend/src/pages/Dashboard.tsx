@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WifiOff } from "lucide-react";
 import { DashboardHeader } from "../components/DashboardHeader";
+import { NavigationTabs, TabId } from "../components/NavigationTabs";
 import { StatsPanel } from "../components/StatsPanel";
 import { PipelineFlow } from "../components/PipelineFlow";
 import { SourceGrid } from "../components/SourceGrid";
@@ -10,9 +11,17 @@ import { RecordsTable } from "../components/RecordsTable";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorState } from "../components/ErrorState";
+import { DataQualitySection } from "../components/DataQualitySection";
+import { AnomaliesSection } from "../components/AnomaliesSection";
+import { AlertsSection } from "../components/AlertsSection";
+import { PipelineHealthSection } from "../components/PipelineHealthSection";
+import { DataLineageSection } from "../components/DataLineageSection";
+import { RunComparisonSection } from "../components/RunComparisonSection";
+
 import { useWebSocket } from "../hooks/useWebSocket";
 import { api, ApiError } from "../services/api";
 import type {
+  IngestionEvent,
   IngestionRunSummary,
   PaginatedRecords,
   SourceStatus,
@@ -22,10 +31,16 @@ import type {
 const RECORDS_PAGE_SIZE = 20;
 
 export function Dashboard() {
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [sources, setSources] = useState<SourceStatus[]>([]);
   const [runs, setRuns] = useState<IngestionRunSummary[]>([]);
   const [records, setRecords] = useState<PaginatedRecords | null>(null);
+
+  const [qualityScore, setQualityScore] = useState<number>(94.7);
+  const [healthScore, setHealthScore] = useState<number>(91);
+  const [activeAlertsCount, setActiveAlertsCount] = useState<number>(0);
+  const [anomaliesCount, setAnomaliesCount] = useState<number>(0);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,6 +62,35 @@ export function Dashboard() {
     setSources(sourcesRes);
     setRuns(runsRes);
     setRecords(recordsRes);
+
+    // Fetch quick summary scores for header / overview cards
+    try {
+      const qRes = await api.getQuality();
+      setQualityScore(qRes.overall_score);
+    } catch {
+      // keep fallback
+    }
+
+    try {
+      const hRes = await api.getPipelineHealth();
+      setHealthScore(hRes.overall_score);
+    } catch {
+      // keep fallback
+    }
+
+    try {
+      const aRes = await api.getAlerts("ACTIVE");
+      setActiveAlertsCount(aRes.active_count);
+    } catch {
+      // keep fallback
+    }
+
+    try {
+      const anomRes = await api.getAnomalies();
+      setAnomaliesCount(anomRes.summary.total_anomalies);
+    } catch {
+      // keep fallback
+    }
   }, []);
 
   const initialLoad = useCallback(async () => {
@@ -76,7 +120,7 @@ export function Dashboard() {
       await loadAll(recordsPageRef.current);
       setError(null);
     } catch {
-      // Keep whatever data is already on screen; the user can retry manually.
+      // Keep whatever data is already on screen
     } finally {
       setRefreshing(false);
     }
@@ -105,14 +149,12 @@ export function Dashboard() {
   }, []);
 
   const { status: wsStatus, activity } = useWebSocket(
-    useCallback((event) => {
+    useCallback((event: IngestionEvent) => {
       if (event.event === "INGESTION_STARTED") {
         setIngestionRunning(true);
       }
       if (event.event === "INGESTION_COMPLETED") {
         setIngestionRunning(false);
-        // The event carries only a summary; pull the authoritative totals
-        // and refreshed record/source state over REST.
         loadAll(recordsPageRef.current).catch(() => undefined);
       }
     }, [loadAll])
@@ -170,6 +212,13 @@ export function Dashboard() {
         ingestionAvailable
       />
 
+      <NavigationTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        activeAlertsCount={activeAlertsCount}
+        anomaliesCount={anomaliesCount}
+      />
+
       {wsStatus === "closed" && (
         <div className="banner" role="status">
           <WifiOff size={14} />
@@ -178,70 +227,81 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="dashboard-stack" style={{ marginTop: 14 }}>
-        <StatsPanel stats={stats} />
-
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Concurrent Ingestion</h2>
-            <span className="panel-sub">
-              Three sources ingested in parallel by the backend orchestrator
-            </span>
-          </div>
-          <PipelineFlow sources={sources} active={ingestionRunning} />
-        </div>
-
-        <div className="dashboard-columns">
+      <div style={{ marginTop: 14 }}>
+        {activeTab === "overview" && (
           <div className="dashboard-stack">
+            <StatsPanel stats={stats} qualityScore={qualityScore} healthScore={healthScore} />
+
             <div className="panel">
               <div className="panel-header">
-                <h2>Ingestion Performance</h2>
-                <span className="panel-sub">Run duration, most recent 10 runs</span>
+                <h2>Concurrent Ingestion</h2>
+                <span className="panel-sub">
+                  Three sources ingested in parallel by the backend orchestrator
+                </span>
               </div>
-              <div className="panel-body">
-                <IngestionChart runs={runs} />
+              <PipelineFlow sources={sources} active={ingestionRunning} />
+            </div>
+
+            <div className="dashboard-columns">
+              <div className="dashboard-stack">
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2>Ingestion Performance</h2>
+                    <span className="panel-sub">Run duration, most recent 10 runs</span>
+                  </div>
+                  <div className="panel-body">
+                    <IngestionChart runs={runs} />
+                  </div>
+                </div>
+
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2>Recent Ingestion Runs</h2>
+                  </div>
+                  <IngestionTable runs={runs} />
+                </div>
+              </div>
+
+              <div className="dashboard-stack">
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2>Source Monitoring</h2>
+                  </div>
+                  <div className="panel-body">
+                    <SourceGrid sources={sources} />
+                  </div>
+                </div>
+
+                <div className="panel">
+                  <div className="panel-header">
+                    <h2>Live Activity</h2>
+                  </div>
+                  <ActivityFeed items={activity} />
+                </div>
               </div>
             </div>
 
             <div className="panel">
               <div className="panel-header">
-                <h2>Recent Ingestion Runs</h2>
+                <h2>Processed Records</h2>
+                <span className="panel-sub">Page {recordsPage}</span>
               </div>
-              <IngestionTable runs={runs} />
+              <RecordsTable data={records} onPageChange={handlePageChange} />
             </div>
           </div>
+        )}
 
-          <div className="dashboard-stack">
-            <div className="panel">
-              <div className="panel-header">
-                <h2>Source Monitoring</h2>
-              </div>
-              <div className="panel-body">
-                <SourceGrid sources={sources} />
-              </div>
-            </div>
-
-            <div className="panel">
-              <div className="panel-header">
-                <h2>Live Activity</h2>
-              </div>
-              <ActivityFeed items={activity} />
-            </div>
-          </div>
-        </div>
-
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Processed Records</h2>
-            <span className="panel-sub">Page {recordsPage}</span>
-          </div>
-          <RecordsTable data={records} onPageChange={handlePageChange} />
-        </div>
+        {activeTab === "quality" && <DataQualitySection />}
+        {activeTab === "anomalies" && <AnomaliesSection />}
+        {activeTab === "alerts" && <AlertsSection />}
+        {activeTab === "health" && <PipelineHealthSection />}
+        {activeTab === "lineage" && <DataLineageSection />}
+        {activeTab === "comparison" && <RunComparisonSection />}
       </div>
 
       <footer className="app-footer">
-        <span>Concurrent Data Ingestion Pipeline — Member 4 dashboard</span>
-        <span>Backend: REST + WebSocket, contract owned by Member 1</span>
+        <span>Concurrent Data Intelligence Platform — Phase 1</span>
+        <span>Backend: FastAPI + Python ML (IsolationForest, Pandas) + REST/WS</span>
       </footer>
     </div>
   );

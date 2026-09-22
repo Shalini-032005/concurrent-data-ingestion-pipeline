@@ -19,6 +19,16 @@ from app.schemas.responses import (
     SourceStatus,
     StatsResponse,
 )
+from app.schemas.intelligence import (
+    AlertItem,
+    AlertStatusEnum,
+    AnomalyRecord,
+    DataQualityResponse,
+    LineageStep,
+    PipelineHealthResponse,
+    QualityTrendPoint,
+    RecordLineageResponse,
+)
 
 
 @runtime_checkable
@@ -63,21 +73,69 @@ class Repository(Protocol):
         """Return a single ingestion run by id, or None if not found."""
         ...
 
+    # Phase 1 Data Intelligence Extensions
+    async def save_quality_metrics(self, metrics: DataQualityResponse, run_id: Optional[int] = None) -> None:
+        ...
+
+    async def get_latest_quality_metrics(self) -> Optional[DataQualityResponse]:
+        ...
+
+    async def get_quality_trend(self, limit: int = 20) -> List[QualityTrendPoint]:
+        ...
+
+    async def save_anomalies(self, anomalies: List[AnomalyRecord]) -> None:
+        ...
+
+    async def get_anomalies(
+        self, source: Optional[str] = None, severity: Optional[str] = None
+    ) -> List[AnomalyRecord]:
+        ...
+
+    async def get_anomaly(self, anomaly_id: str) -> Optional[AnomalyRecord]:
+        ...
+
+    async def save_alerts(self, alerts: List[AlertItem]) -> None:
+        ...
+
+    async def get_alerts(self, status: Optional[str] = None) -> List[AlertItem]:
+        ...
+
+    async def update_alert_status(self, alert_id: str, status: AlertStatusEnum) -> Optional[AlertItem]:
+        ...
+
+    async def save_pipeline_health(self, health: PipelineHealthResponse) -> None:
+        ...
+
+    async def get_latest_pipeline_health(self) -> Optional[PipelineHealthResponse]:
+        ...
+
+    async def save_lineage_steps(
+        self, record_id: str, source: str, run_id: Optional[int], steps: List[LineageStep]
+    ) -> None:
+        ...
+
+    async def get_record_lineage(self, record_id: str) -> Optional[RecordLineageResponse]:
+        ...
+
 
 # ---------------------------------------------------------------------------
-# TEMPORARY IMPLEMENTATION
-# Replace with a real PostgreSQL repository (SQLAlchemy + asyncpg).
-# This in-memory version exists purely so Member 1's API is independently
-# testable/demoable before Member 3's database layer is wired in.
+# IN-MEMORY IMPLEMENTATION
 # ---------------------------------------------------------------------------
 
 class InMemoryRepository:
-    """TEMPORARY IMPLEMENTATION — Replace with PostgreSQL repository."""
+    """InMemoryRepository with Phase 1 Data Intelligence support."""
 
     def __init__(self) -> None:
         self._records: List[CanonicalRecord] = []
         self._runs: Dict[int, IngestionRunSummary] = {}
         self._sources: Dict[str, SourceStatus] = {}
+
+        # Phase 1 storage structures
+        self._quality_history: List[Dict[str, Any]] = []
+        self._anomalies: Dict[str, AnomalyRecord] = {}
+        self._alerts: Dict[str, AlertItem] = {}
+        self._pipeline_health: Optional[PipelineHealthResponse] = None
+        self._lineage: Dict[str, RecordLineageResponse] = {}
 
     async def save_records(self, records: List[CanonicalRecord]) -> None:
         self._records.extend(records)
@@ -126,3 +184,89 @@ class InMemoryRepository:
 
     async def get_run(self, run_id: int) -> Optional[IngestionRunSummary]:
         return self._runs.get(run_id)
+
+    # Phase 1 Data Intelligence Implementation
+    async def save_quality_metrics(self, metrics: DataQualityResponse, run_id: Optional[int] = None) -> None:
+        self._quality_history.append({"run_id": run_id, "metrics": metrics})
+
+    async def get_latest_quality_metrics(self) -> Optional[DataQualityResponse]:
+        if not self._quality_history:
+            return None
+        return self._quality_history[-1]["metrics"]
+
+    async def get_quality_trend(self, limit: int = 20) -> List[QualityTrendPoint]:
+        points: List[QualityTrendPoint] = []
+        for idx, item in enumerate(self._quality_history[-limit:]):
+            m: DataQualityResponse = item["metrics"]
+            points.append(
+                QualityTrendPoint(
+                    run_id=item["run_id"] or (idx + 1),
+                    timestamp=m.timestamp,
+                    overall_score=m.overall_score,
+                    completeness=m.completeness,
+                    validity=m.validity,
+                    consistency=m.consistency,
+                    uniqueness=m.uniqueness,
+                    freshness=m.freshness,
+                )
+            )
+        return points
+
+    async def save_anomalies(self, anomalies: List[AnomalyRecord]) -> None:
+        for anomaly in anomalies:
+            self._anomalies[anomaly.id] = anomaly
+
+    async def get_anomalies(
+        self, source: Optional[str] = None, severity: Optional[str] = None
+    ) -> List[AnomalyRecord]:
+        result = list(self._anomalies.values())
+        if source:
+            result = [a for a in result if a.source == source]
+        if severity:
+            result = [a for a in result if (a.severity.value if hasattr(a.severity, "value") else str(a.severity)) == severity]
+        return sorted(result, key=lambda a: a.timestamp, reverse=True)
+
+    async def get_anomaly(self, anomaly_id: str) -> Optional[AnomalyRecord]:
+        return self._anomalies.get(anomaly_id)
+
+    async def save_alerts(self, alerts: List[AlertItem]) -> None:
+        for alert in alerts:
+            self._alerts[alert.id] = alert
+
+    async def get_alerts(self, status: Optional[str] = None) -> List[AlertItem]:
+        result = list(self._alerts.values())
+        if status:
+            result = [a for a in result if (a.status.value if hasattr(a.status, "value") else str(a.status)) == status]
+        return sorted(result, key=lambda a: a.timestamp, reverse=True)
+
+    async def update_alert_status(self, alert_id: str, status: AlertStatusEnum) -> Optional[AlertItem]:
+        if alert_id in self._alerts:
+            alert = self._alerts[alert_id]
+            updated = alert.model_copy(update={"status": status})
+            self._alerts[alert_id] = updated
+            return updated
+        return None
+
+    async def save_pipeline_health(self, health: PipelineHealthResponse) -> None:
+        self._pipeline_health = health
+
+    async def get_latest_pipeline_health(self) -> Optional[PipelineHealthResponse]:
+        return self._pipeline_health
+
+    async def save_lineage_steps(
+        self, record_id: str, source: str, run_id: Optional[int], steps: List[LineageStep]
+    ) -> None:
+        received_at = steps[0].timestamp if steps else ""
+        final_status = steps[-1].status if steps else "UNKNOWN"
+        self._lineage[record_id] = RecordLineageResponse(
+            record_id=record_id,
+            source=source,
+            run_id=run_id,
+            received_at=received_at,
+            final_status=final_status,
+            steps=steps,
+        )
+
+    async def get_record_lineage(self, record_id: str) -> Optional[RecordLineageResponse]:
+        return self._lineage.get(record_id)
+

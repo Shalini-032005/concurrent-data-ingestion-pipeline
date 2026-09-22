@@ -116,3 +116,111 @@ class IngestionRunORM(Base):
         Index("ix_ingestion_runs_started_at", "started_at"),
         Index("ix_ingestion_runs_status", "status"),
     )
+
+
+class QualityMetricsORM(Base):
+    """Quality score snapshots computed per ingestion run."""
+
+    __tablename__ = "quality_metrics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    overall_score: Mapped[float] = mapped_column(Float, nullable=False)
+    completeness: Mapped[float] = mapped_column(Float, nullable=False)
+    validity: Mapped[float] = mapped_column(Float, nullable=False)
+    consistency: Mapped[float] = mapped_column(Float, nullable=False)
+    uniqueness: Mapped[float] = mapped_column(Float, nullable=False)
+    freshness: Mapped[float] = mapped_column(Float, nullable=False)
+    details: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_quality_metrics_run_id", "run_id"),
+        Index("ix_quality_metrics_timestamp", "timestamp"),
+    )
+
+
+class AnomalyORM(Base):
+    """ML anomaly detection records."""
+
+    __tablename__ = "anomalies"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    record_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    feature_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    current_value: Mapped[float] = mapped_column(Float, nullable=False)
+    expected_range: Mapped[str] = mapped_column(String(255), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_anomalies_source", "source"),
+        Index("ix_anomalies_severity", "severity"),
+        Index("ix_anomalies_timestamp", "timestamp"),
+    )
+
+
+class AlertORM(Base):
+    """Intelligent alert system items."""
+
+    __tablename__ = "alerts"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", nullable=False)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    record_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_alerts_severity", "severity"),
+        Index("ix_alerts_status", "status"),
+        Index("ix_alerts_timestamp", "timestamp"),
+    )
+
+
+class PipelineHealthORM(Base):
+    """Historical snapshots of pipeline health scores."""
+
+    __tablename__ = "pipeline_health"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    overall_score: Mapped[float] = mapped_column(Float, nullable=False)
+    availability: Mapped[float] = mapped_column(Float, nullable=False)
+    latency: Mapped[float] = mapped_column(Float, nullable=False)
+    validation: Mapped[float] = mapped_column(Float, nullable=False)
+    reliability: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_pipeline_health_updated_at", "updated_at"),
+    )
+
+
+class DataLineageORM(Base):
+    """Record execution flow details across ingestion stages."""
+
+    __tablename__ = "data_lineage"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    record_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(100), nullable=False)
+    run_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    stage: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    details: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_data_lineage_record_id", "record_id"),
+        Index("ix_data_lineage_run_id", "run_id"),
+    )
+

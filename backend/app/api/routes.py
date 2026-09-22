@@ -24,8 +24,12 @@ from app.services.dependencies import get_repository
 from app.services.ingestion_service import IngestionService
 from app.services.stats_service import StatsService
 
+from app.api.intelligence_routes import router as intelligence_router
+
 logger = logging.getLogger(__name__)
 router = APIRouter()
+router.include_router(intelligence_router)
+
 
 
 def get_ingestion_service(

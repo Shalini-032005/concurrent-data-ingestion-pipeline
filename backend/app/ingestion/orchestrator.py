@@ -272,6 +272,27 @@ class IngestionOrchestrator:
 
         await self.repository.save_ingestion_run(summary)
 
+        # Trigger Phase 1 Data Intelligence computations automatically
+        try:
+            from app.services.data_quality_service import DataQualityService
+            from app.services.anomaly_service import AnomalyService
+            from app.services.pipeline_health_service import PipelineHealthService
+            from app.services.alert_service import AlertService
+
+            dq_service = DataQualityService(self.repository)
+            await dq_service.calculate_quality(run_id=run_id)
+
+            anom_service = AnomalyService(self.repository)
+            await anom_service.scan_and_save_anomalies(run_id=run_id)
+
+            health_service = PipelineHealthService(self.repository)
+            await health_service.calculate_health()
+
+            alert_service = AlertService(self.repository)
+            await alert_service.scan_and_generate_alerts(run_summary=summary)
+        except Exception:  # noqa: BLE001
+            logger.exception("Data intelligence background computation failed for run %d", run_id)
+
         logger.info(
             "Ingestion run %d completed with status=%s in %.1fms "
             "(received=%d processed=%d duplicates=%d failed=%d)",
@@ -288,3 +309,4 @@ class IngestionOrchestrator:
         )
 
         return summary
+
