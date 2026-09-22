@@ -1,0 +1,109 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+:root {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --bg: #0e1117;
+  --panel: #161b26;
+  --panel-raised: #1c2330;
+  --border: #2a3142;
+  --border-soft: #212736;
+
+  /* --- Text --- */
+  --text-primary: #e9ecf4;
+  --text-secondary: #909aad;
+  --text-faint: #5a6478;
+
+  /* --- Accents --- */
+  --accent-amber: #e8a13d;
+  --accent-amber-dim: #4a3a20;
+  --accent-cyan: #4fd6e0;
+  --accent-cyan-dim: #1c3a3d;
+  --accent-green: #5cbf7a;
+  --accent-green-dim: #1e3626;
+  --accent-red: #e2685f;
+  --accent-red-dim: #3d2320;
+  --accent-orange: #e08a4c;
+  --accent-orange-dim: #3d2a1a;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(232, 161, 61, 0.05), transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(79, 214, 224, 0.04), transparent 40%);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100%;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--accent-cyan);
+}
+
+::selection {
+  background: var(--accent-amber-dim);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
